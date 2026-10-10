@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+
+{% block title %}Curriculum &amp; Prerequisite Management — Cognimap AI{% endblock %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto;">
+  <!-- Header -->
+  <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1.25rem;">
+    <div>
+      <div style="display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+        <span class="badge badge-purple">
+          <i data-lucide="layers" style="width: 13px; height: 13px;"></i>
+          Curriculum Architect
+        </span>
+        <span class="badge badge-cyan">
+          {% if subject %}{{ subject.subject_name }} ({{ subject.code }}){% else %}Data Structures (CS204){% endif %}
+        </span>
+      </div>
+      <h1 class="page-title">Curriculum &amp; Concept Dependencies</h1>
+      <p class="page-subtitle">
+        Hierarchical Units, Topics, Atomic Concepts, and Directed Prerequisite Trajectories for DAG traversal.
+      </p>
+    </div>
+    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+      <a href="{{ url_for('knowledge_map_view') }}" class="btn btn-secondary">
+        <i data-lucide="git-fork" style="width: 16px; height: 16px; color: var(--brand-cyan);"></i>
+        <span>Live Knowledge Map</span>
+      </a>
+      <a href="{{ url_for('lecturer_questions') }}" class="btn btn-primary">
+        <i data-lucide="help-circle" style="width: 16px; height: 16px;"></i>
+        <span>Question Bank</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Curriculum Tree Overview -->
+  <div class="card" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.75rem;">
+      <div>
+        <h3 style="font-size: 1.2rem; font-weight: 700;">Curriculum Hierarchy (Units &rarr; Topics &rarr; Concepts)</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">
+          Every concept node belongs to an overarching topic and unit within the syllabus.
+        </p>
+      </div>
+      <span class="badge badge-strong">{{ all_concepts|length }} Concepts Configured</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+      {% for uid, u in curriculum.items() %}
+        <div style="border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: rgba(255,255,255,0.02); overflow: hidden;">
+          <!-- Unit Header -->
+          <div style="padding: 0.9rem 1.35rem; background: rgba(99, 102, 241, 0.08); border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <span class="badge badge-purple" style="font-weight: 800;">Unit {{ u.unit_number }}</span>
+              <strong style="font-size: 1.05rem; color: var(--text-main);">{{ u.unit_name }}</strong>
+            </div>
+            <span style="font-size: 0.82rem; color: var(--text-dim);">{{ u.topics.values()|length }} Topics</span>
+          </div>
+
+          <!-- Topics and Concepts Container -->
+          <div style="padding: 1.25rem 1.35rem; display: flex; flex-direction: column; gap: 1.15rem;">
+            {% for tid, top in u.topics.items() %}
+              <div style="padding-left: 0.85rem; border-left: 2px solid var(--brand-purple);">
+                <div style="font-weight: 700; color: var(--brand-cyan); font-size: 0.94rem; margin-bottom: 0.65rem; display: flex; align-items: center; gap: 0.4rem;">
+                  <i data-lucide="bookmark" style="width: 14px; height: 14px;"></i>
+                  Topic: {{ top.topic_name }}
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.65rem;">
+                  {% for c in top.concepts %}
+                    <div style="background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.5rem 0.9rem; font-size: 0.86rem;" class="card-lift">
+                      <div style="font-weight: 600; color: var(--text-main);">{{ c.concept_name }}</div>
+                      {% if c.description %}
+                        <div style="font-size: 0.76rem; color: var(--text-dim); margin-top: 0.2rem; max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ c.description }}">
+                          {{ c.description }}
+                        </div>
+                      {% endif %}
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Architect Actions: Add Prerequisite & Add Concept -->
+  <div class="grid-2" style="margin-bottom: 2rem;">
+    <!-- Add Prerequisite Link Card -->
+    <div class="card">
+      <h3 style="font-size: 1.18rem; font-weight: 700; margin-bottom: 0.35rem;">Define Prerequisite Dependency</h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.35rem;">
+        Establish directed knowledge requirement (Prerequisite &rarr; Dependent Concept)
+      </p>
+
+      <form id="form-add-dependency" onsubmit="submitDependency(event)">
+        <div class="form-group">
+          <label class="form-label" for="prereq-select">Foundational Prerequisite Concept (Must Master First)</label>
+          <select id="prereq-select" class="form-control" required>
+            <option value="">-- Select Prerequisite --</option>
+            {% for c in all_concepts %}
+              <option value="{{ c.concept_id }}">{{ c.concept_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div style="text-align: center; margin: -0.25rem 0 0.75rem 0; font-size: 1.1rem; color: var(--brand-cyan); display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
+          <i data-lucide="arrow-down" style="width: 16px; height: 16px;"></i>
+          <span style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">enables</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="target-select">Target Dependent Concept (Requires Mastery)</label>
+          <select id="target-select" class="form-control" required>
+            <option value="">-- Select Target Concept --</option>
+            {% for c in all_concepts %}
+              <option value="{{ c.concept_id }}">{{ c.concept_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; gap: 0.45rem;">
+          <span>Add Prerequisite Link</span>
+          <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- Add New Concept Card -->
+    <div class="card">
+      <h3 style="font-size: 1.18rem; font-weight: 700; margin-bottom: 0.35rem;">Add New Concept</h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.35rem;">
+        Create an atomic concept node in the syllabus
+      </p>
+
+      <form id="form-add-concept" onsubmit="submitConcept(event)">
+        <div class="form-group">
+          <label class="form-label" for="topic-select">Topic Area</label>
+          <select id="topic-select" class="form-control" required>
+            <option value="">-- Select Topic --</option>
+            {% for t in all_topics %}
+              <option value="{{ t.topic_id }}">{{ t.topic_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="concept-name-input">Concept Name</label>
+          <input type="text" id="concept-name-input" class="form-control" placeholder="e.g. Red-Black Trees" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="concept-desc-input">Concept Summary / Description</label>
+          <textarea id="concept-desc-input" class="form-control" rows="2" placeholder="Brief pedagogical summary..." required></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-secondary" style="width: 100%; gap: 0.45rem;">
+          <span>Create Concept Node</span>
+          <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Additional Curriculum Builders: Add Unit & Add Topic -->
+  <div class="grid-2" style="margin-bottom: 2rem;">
+    <!-- Add Unit -->
+    <div class="card">
+      <h3 style="font-size: 1.18rem; font-weight: 700; margin-bottom: 0.35rem;">Add New Unit</h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+        Define an additional syllabus unit (e.g. Unit 5: Advanced Graph Algorithms)
+      </p>
+      <form id="form-add-unit" onsubmit="submitUnit(event)">
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="unit-num-input">Unit Number</label>
+            <input type="number" id="unit-num-input" class="form-control" min="1" max="20" value="{{ all_units|length + 1 }}" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="unit-name-input">Unit Title</label>
+            <input type="text" id="unit-name-input" class="form-control" placeholder="e.g. Advanced Graph Algorithms" required>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-secondary" style="width: 100%; gap: 0.45rem;">
+          <span>Create Unit</span>
+          <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- Add Topic -->
+    <div class="card">
+      <h3 style="font-size: 1.18rem; font-weight: 700; margin-bottom: 0.35rem;">Add New Topic</h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+        Add a topic module inside an existing unit
+      </p>
+      <form id="form-add-topic" onsubmit="submitTopic(event)">
+        <div class="form-group">
+          <label class="form-label" for="unit-select">Belongs to Unit</label>
+          <select id="unit-select" class="form-control" required>
+            <option value="">-- Select Unit --</option>
+            {% for u in all_units %}
+              <option value="{{ u.unit_id }}">Unit {{ u.unit_number }}: {{ u.unit_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="topic-name-input">Topic Name</label>
+          <input type="text" id="topic-name-input" class="form-control" placeholder="e.g. Disjoint Set Union" required>
+        </div>
+        <button type="submit" class="btn btn-secondary" style="width: 100%; gap: 0.45rem;">
+          <span>Create Topic</span>
+          <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Active Dependencies Table -->
+  <div class="card" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.35rem; flex-wrap: wrap; gap: 0.5rem;">
+      <div>
+        <h3 style="font-size: 1.2rem; font-weight: 700;">Active Prerequisite Dependencies (Graph Edges)</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">
+          These directed relationships drive the NetworkX gap detection engine and topological sort algorithm
+        </p>
+      </div>
+      <span class="badge badge-purple">{{ dependencies|length }} Dependencies Active</span>
+    </div>
+
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Dependency ID</th>
+            <th>Prerequisite (Must Master First)</th>
+            <th>Relationship</th>
+            <th>Target Concept (Requires Mastery)</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in dependencies %}
+            <tr id="dep-row-{{ d.dependency_id }}">
+              <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.84rem; color: var(--text-dim);">#{{ d.dependency_id }}</td>
+              <td style="font-weight: 700; color: var(--brand-cyan);">{{ d.prerequisite_name }}</td>
+              <td style="color: var(--text-dim); font-size: 0.85rem;">
+                <span style="display: inline-flex; align-items: center; gap: 0.35rem;">
+                  &rarr; enables &rarr;
+                </span>
+              </td>
+              <td style="font-weight: 700; color: var(--text-main);">{{ d.target_name }}</td>
+              <td>
+                <button onclick="deleteDependency({{ d.dependency_id }})" class="btn btn-sm btn-danger" style="padding: 0.3rem 0.65rem; font-size: 0.78rem;">
+                  <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i>
+                  <span>Delete</span>
+                </button>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function submitDependency(e) {
+  e.preventDefault();
+  const prereqId = document.getElementById('prereq-select').value;
+  const targetId = document.getElementById('target-select').value;
+
+  if (prereqId === targetId) {
+    alert("A concept cannot be a prerequisite of itself!");
+    return;
+  }
+
+  fetch('/api/lecturer/add-dependency', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      concept_id: parseInt(targetId),
+      prerequisite_concept_id: parseInt(prereqId)
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      showToast("Prerequisite dependency added successfully!", "success");
+      setTimeout(() => location.reload(), 800);
+    } else {
+      alert("Error: " + data.error);
+    }
+  });
+}
+
+function deleteDependency(depId) {
+  if (!confirm("Are you sure you want to remove this prerequisite relationship?")) return;
+
+  fetch('/api/lecturer/delete-dependency', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dependency_id: depId })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      showToast("Prerequisite dependency removed.", "info");
+      const row = document.getElementById(`dep-row-${depId}`);
+      if (row) row.remove();
+    } else {
+      alert("Error: " + data.error);
+    }
+  });
+}
+
+function submitConcept(e) {
+  e.preventDefault();
+  const topicId = document.getElementById('topic-select').value;
+  const name = document.getElementById('concept-name-input').value;
+  const desc = document.getElementById('concept-desc-input').value;
+
+  fetch('/api/lecturer/add-concept', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      topic_id: parseInt(topicId),
+      concept_name: name,
+      description: desc
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      showToast("Concept created successfully!", "success");
+      setTimeout(() => location.reload(), 800);
+    } else {
+      alert("Error: " + data.error);
+    }
+  });
+}
+
+function submitUnit(e) {
+  e.preventDefault();
+  const unitNum = document.getElementById('unit-num-input').value;
+  const unitName = document.getElementById('unit-name-input').value;
+
+  fetch('/api/lecturer/add-unit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      unit_number: parseInt(unitNum),
+      unit_name: unitName
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      showToast("Unit created successfully!", "success");
+      setTimeout(() => location.reload(), 800);
+    } else {
+      alert("Error: " + data.error);
+    }
+  });
+}
+
+function submitTopic(e) {
+  e.preventDefault();
+  const unitId = document.getElementById('unit-select').value;
+  const topicName = document.getElementById('topic-name-input').value;
+
+  fetch('/api/lecturer/add-topic', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      unit_id: parseInt(unitId),
+      topic_name: topicName
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      showToast("Topic created successfully!", "success");
+      setTimeout(() => location.reload(), 800);
+    } else {
+      alert("Error: " + data.error);
+    }
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,44 @@
+# Environment & Secrets (NEVER COMMIT REAL SECRETS)
+.env
+.env.*
+!.env.example
+!demo.env
+
+# SQLite Databases & Backups (NEVER COMMIT RUNTIME/STUDENT DATA)
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Python Virtual Environments
+venv/
+env/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Binaries & Executables
+*.exe
+*.dll
+cloudflared.exe
+ngrok.exe
+
+# Logs & Flask Instance
+*.log
+instance/
+
+# Operating System & Editor Files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+.vscode/
+.idea/

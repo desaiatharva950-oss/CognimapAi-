@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}Question Bank Management — Cognimap AI{% endblock %}
+
+{% block content %}
+<div style="max-width: 1180px; margin: 0 auto;">
+  <!-- Header -->
+  <div class="page-header"
+    style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1.25rem;">
+    <div>
+      <div style="display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+        <span class="badge badge-purple">
+          <i data-lucide="help-circle" style="width: 13px; height: 13px;"></i>
+          Assessment Authoring
+        </span>
+        <span class="badge badge-cyan">Concept Tagged</span>
+      </div>
+      <h1 class="page-title">Question Bank &amp; Concept Tagging</h1>
+      <p class="page-subtitle">
+        Author diagnostic questions with atomic concept tagging, difficulty metrics, and pedagogical answer
+        explanations.
+      </p>
+    </div>
+    <button onclick="document.getElementById('create-q-card').scrollIntoView({behavior: 'smooth'})"
+      class="btn btn-primary" style="gap: 0.45rem;">
+      <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+      <span>Author New Question</span>
+    </button>
+  </div>
+
+  <!-- Assessment Time Limit & Duration Configuration -->
+  <div class="card card-glow" id="assessment-duration-card" style="margin-bottom: 2.25rem; padding: 2rem;">
+    <div
+      style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+      <div>
+        <div style="display: inline-flex; align-items: center; gap: 0.45rem; margin-bottom: 0.25rem;">
+          <i data-lucide="clock" style="width: 18px; height: 18px; color: var(--brand-cyan);"></i>
+          <h3 style="font-size: 1.25rem; font-weight: 700; margin: 0;">Assessment Time Limits &amp; Duration</h3>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">
+          Set the allowed countdown time limits for students taking diagnostic evaluations and follow-up tests.
+        </p>
+      </div>
+      <span class="badge badge-cyan">Active Enforcement</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
+      {% for asm in assessments %}
+      <div
+        style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 1.35rem; display: flex; flex-direction: column; justify-content: space-between; gap: 1rem;">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <span class="badge {% if asm.assessment_type == 'initial' %}badge-purple{% else %}badge-strong{% endif %}">
+              {{ 'Initial Diagnostic' if asm.assessment_type == 'initial' else 'Follow-Up Quiz' }}
+            </span>
+            <span class="badge badge-unassessed font-mono" style="font-size: 0.78rem;">Assessment #{{ asm.assessment_id
+              }}</span>
+          </div>
+          <h4
+            style="font-size: 1.02rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem; line-height: 1.35;">
+            {{ asm.title }}
+          </h4>
+          <p style="font-size: 0.83rem; color: var(--text-muted); margin: 0;">
+            Current Limit: <strong style="color: var(--brand-cyan);"
+              id="current-duration-text-{{ asm.assessment_id }}">{{ asm.duration_minutes }} minutes</strong>
+          </p>
+        </div>
+
+        <div style="display: flex; align-items: flex-end; gap: 0.75rem;">
+          <div style="flex: 1;">
+            <label class="form-label" for="duration-input-{{ asm.assessment_id }}"
+              style="font-size: 0.78rem; margin-bottom: 0.35rem;">Duration (minutes)</label>
+            <input type="number" id="duration-input-{{ asm.assessment_id }}" class="form-control"
+              value="{{ asm.duration_minutes }}" min="1" max="300"
+              style="padding: 0.55rem 0.85rem; font-size: 0.95rem; font-weight: 600;">
+          </div>
+          <button type="button" class="btn btn-primary" onclick="updateAssessmentDuration({{ asm.assessment_id }})"
+            style="padding: 0.6rem 1.15rem; gap: 0.4rem; white-space: nowrap;"
+            id="btn-save-duration-{{ asm.assessment_id }}">
+            <i data-lucide="save" style="width: 15px; height: 15px;"></i>
+            <span>Set Duration</span>
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Create Question Form Card -->
+  <div class="card card-glow" id="create-q-card" style="margin-bottom: 2.5rem; padding: 2.25rem;">
+    <div
+      style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem;">
+      <div>
+        <h3 style="font-size: 1.25rem; font-weight: 700;">Author New Concept-Tagged Question</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
+          Every question must be bound to a specific curriculum concept for AI diagnostic mapping.
+        </p>
+      </div>
+      <span class="badge badge-cyan">Auto-Diagnostic Ready</span>
+    </div>
+
+    <form id="form-create-question" onsubmit="createQuestion(event)">
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label" for="q-concept">Target Syllabus Concept</label>
+          <select id="q-concept" class="form-control" required>
+            <option value="">-- Select Target Concept --</option>
+            {% for c in concepts %}
+            <option value="{{ c.concept_id }}">{{ c.concept_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="q-difficulty">Difficulty Level</label>
+          <select id="q-difficulty" class="form-control" required>
+            <option value="Easy">Easy</option>
+            <option value="Medium" selected>Medium</option>
+            <option value="Hard">Hard</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="q-text">Question Prompt</label>
+        <textarea id="q-text" class="form-control" rows="2"
+          placeholder="e.g. What is the time complexity of Breadth-First Search on an adjacency list representation?"
+          required></textarea>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label" for="opt-a">Option A</label>
+          <input type="text" id="opt-a" class="form-control" placeholder="Option A text" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="opt-b">Option B</label>
+          <input type="text" id="opt-b" class="form-control" placeholder="Option B text" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="opt-c">Option C</label>
+          <input type="text" id="opt-c" class="form-control" placeholder="Option C text" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="opt-d">Option D</label>
+          <input type="text" id="opt-d" class="form-control" placeholder="Option D text" required>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label" for="q-correct">Correct Answer (Must match one option exactly)</label>
+          <input type="text" id="q-correct" class="form-control" placeholder="Exact text of the correct option"
+            required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="q-marks">Marks Awarded</label>
+          <input type="number" id="q-marks" class="form-control" value="1" min="1" max="5" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="q-expl">Pedagogical Explanation (Shown during student audit)</label>
+        <textarea id="q-expl" class="form-control" rows="2"
+          placeholder="Explain why this answer is correct and link to underlying concept principles..."
+          required></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="padding: 0.8rem 1.85rem; gap: 0.5rem;">
+        <i data-lucide="check" style="width: 16px; height: 16px;"></i>
+        <span>Publish Question to Bank</span>
+      </button>
+    </form>
+  </div>
+
+  <!-- Existing Questions Bank -->
+  <div class="card">
+    <div
+      style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.75rem;">
+      <div>
+        <h3 style="font-size: 1.2rem; font-weight: 700;">Curated Question Bank</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">
+          Questions actively deployed in diagnostic assessments and follow-up tests
+        </p>
+      </div>
+      <span class="badge badge-purple">{{ questions|length }} Questions Enrolled</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 1.15rem;">
+      {% for q in questions %}
+      <div
+        style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); padding: 1.35rem; border-radius: var(--radius-sm);"
+        class="card-lift">
+        <div
+          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem; flex-wrap: wrap; gap: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <span class="badge badge-unassessed font-mono">#{{ q.question_id }}</span>
+            <strong style="color: var(--brand-cyan); font-size: 0.95rem;">{{ q.concept_name }}</strong>
+            <span
+              class="badge {% if q.difficulty == 'Easy' %}badge-strong{% elif q.difficulty == 'Medium' %}badge-ni{% else %}badge-weak{% endif %}">
+              {{ q.difficulty }}
+            </span>
+          </div>
+          <span style="font-size: 0.82rem; color: var(--text-dim); font-weight: 600;">{{ q.marks }} mark</span>
+        </div>
+
+        <p
+          style="font-size: 0.98rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.85rem; line-height: 1.5;">
+          {{ q.question_text }}
+        </p>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.65rem;">
+          {% for opt in q.options %}
+          <span
+            style="font-size: 0.84rem; padding: 0.35rem 0.75rem; border-radius: 6px; background: {% if opt == q.correct_answer %}rgba(16, 185, 129, 0.12){% else %}rgba(255,255,255,0.03){% endif %}; border: 1px solid {% if opt == q.correct_answer %}rgba(16, 185, 129, 0.35){% else %}var(--border-subtle){% endif %}; color: {% if opt == q.correct_answer %}var(--status-strong){% else %}var(--text-muted){% endif %};">
+            {% if opt == q.correct_answer %}✓ {% endif %}{{ opt }}
+          </span>
+          {% endfor %}
+        </div>
+
+        {% if q.explanation %}
+        <div
+          style="font-size: 0.84rem; color: var(--text-muted); background: rgba(9, 13, 22, 0.5); padding: 0.65rem 0.95rem; border-radius: 6px; border-left: 3px solid var(--brand-primary); margin-top: 0.65rem; line-height: 1.5;">
+          <strong style="color: #fff;">Explanation:</strong> {{ q.explanation }}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function createQuestion(e) {
+    e.preventDefault();
+    const cid = document.getElementById('q-concept').value;
+    const diff = document.getElementById('q-difficulty').value;
+    const text = document.getElementById('q-text').value;
+    const optA = document.getElementById('opt-a').value;
+    const optB = document.getElementById('opt-b').value;
+    const optC = document.getElementById('opt-c').value;
+    const optD = document.getElementById('opt-d').value;
+    const correct = document.getElementById('q-correct').value;
+    const expl = document.getElementById('q-expl').value;
+    const marks = parseInt(document.getElementById('q-marks').value) || 1;
+
+    const options = [optA, optB, optC, optD];
+    if (!options.includes(correct)) {
+      alert("The Correct Answer must exactly match one of the four options!");
+      return;
+    }
+
+    fetch('/api/lecturer/create-question', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        concept_id: parseInt(cid),
+        difficulty: diff,
+        question_text: text,
+        options: options,
+        correct_answer: correct,
+        explanation: expl,
+        marks: marks
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          showToast("Question published successfully!", "success");
+          setTimeout(() => location.reload(), 800);
+        } else {
+          alert("Error: " + data.error);
+        }
+      });
+  }
+
+  function updateAssessmentDuration(asmId) {
+    const input = document.getElementById(`duration-input-${asmId}`);
+    const btn = document.getElementById(`btn-save-duration-${asmId}`);
+    const val = parseInt(input.value);
+
+    if (isNaN(val) || val < 1 || val > 300) {
+      alert("Please enter a valid duration between 1 and 300 minutes.");
+      return;
+    }
+
+    const origBtnContent = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span>Saving...</span>';
+
+    fetch('/api/lecturer/update-assessment-duration', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        assessment_id: asmId,
+        duration_minutes: val
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = origBtnContent;
+        if (data.success) {
+          const textElem = document.getElementById(`current-duration-text-${asmId}`);
+          if (textElem) textElem.textContent = `${val} minutes`;
+          if (typeof showToast === 'function') {
+            showToast(`Assessment duration updated to ${val} minutes!`, 'success');
+          } else {
+            alert(`Assessment duration updated to ${val} minutes!`);
+          }
+          if (window.lucide && typeof lucide.createIcons === 'function') {
+            lucide.createIcons();
+          }
+        } else {
+          alert("Error: " + (data.error || "Failed to update duration"));
+        }
+      })
+      .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = origBtnContent;
+        console.error(err);
+        alert("Network error updating duration.");
+      });
+  }
+</script>
+{% endblock %}

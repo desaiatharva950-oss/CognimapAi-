@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Follow-Up Quiz & Improvement Analysis — Cognimap AI{% endblock %}
+
+{% block content %}
+<div style="max-width: 1080px; margin: 0 auto;">
+  <!-- Header -->
+  <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1.25rem;">
+    <div>
+      <div style="display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+        <span class="badge badge-strong">
+          <i data-lucide="check-circle-2" style="width: 13px; height: 13px;"></i>
+          Post-Revision Validation
+        </span>
+        <span class="badge badge-cyan">Observed Gains</span>
+      </div>
+      <h1 class="page-title">Follow-Up Quiz &amp; Improvement Analysis</h1>
+      <p class="page-subtitle">
+        Measuring real-time observed learning gains on previously remediated weak and prerequisite concepts.
+      </p>
+    </div>
+    {% if followup_id %}
+      <a href="{{ url_for('take_assessment', assessment_id=followup_id) }}" class="btn btn-primary" style="gap: 0.5rem;">
+        <i data-lucide="pen-tool" style="width: 16px; height: 16px;"></i>
+        <span>Retake Follow-Up Quiz</span>
+      </a>
+    {% endif %}
+  </div>
+
+  {% if followup_data %}
+    <!-- Overall Delta Banner -->
+    <div class="card card-glow" style="padding: 2.5rem; margin-bottom: 2rem; border-color: rgba(16, 185, 129, 0.4); background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(18, 25, 41, 0.95) 100%);">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.75rem;">
+        <div>
+          <span class="badge badge-strong" style="margin-bottom: 0.65rem;">
+            <i data-lucide="trending-up" style="width: 13px; height: 13px;"></i>
+            Empirical Validation Confirmed
+          </span>
+          <h2 style="font-size: 2.4rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1;">
+            +{{ followup_data.overall_improvement }}% Overall Gain
+          </h2>
+          <p style="color: var(--text-muted); font-size: 0.98rem; margin-top: 0.4rem;">
+            Baseline Score: <strong style="color: #fff;">{{ followup_data.previous_overall_score }}%</strong> &rarr; Follow-Up Score: <strong style="color: var(--status-strong);">{{ followup_data.new_overall_score }}%</strong>
+          </p>
+        </div>
+
+        <div style="text-align: right; max-width: 380px; background: rgba(9, 13, 22, 0.6); padding: 1.1rem 1.35rem; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.25);">
+          <div style="font-size: 0.76rem; text-transform: uppercase; color: var(--text-dim); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.35rem; display: flex; align-items: center; justify-content: flex-end; gap: 0.35rem;">
+            <i data-lucide="info" style="width: 13px; height: 13px; color: var(--brand-cyan);"></i>
+            Pedagogical Note
+          </div>
+          <p style="font-size: 0.84rem; color: var(--text-muted); line-height: 1.5;">
+            Reflects <em>observed improvement</em> between diagnostic assessments following topological prerequisite revision.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Side-by-Side Chart and Concept Cards -->
+    <div class="grid-2" style="margin-bottom: 2rem;">
+      <!-- Chart Card -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <h3 style="font-size: 1.18rem; font-weight: 700;">Before vs. After Comparison</h3>
+          <span class="badge badge-unassessed">Paired Metrics</span>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+          Side-by-side concept scores across testing intervals
+        </p>
+        <div style="height: 320px; position: relative;">
+          <canvas id="improvementBarChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Delta Cards -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <h3 style="font-size: 1.18rem; font-weight: 700;">Concept Delta Breakdown</h3>
+          <span class="badge badge-strong">Remediated</span>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+          Individual concept mastery shift
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+          {% for item in followup_data.concept_improvements %}
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); padding: 0.95rem 1.2rem; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong style="font-size: 0.96rem; color: var(--text-main);">{{ item.concept_name }}</strong>
+                <div style="font-size: 0.84rem; color: var(--text-dim); margin-top: 0.2rem;">
+                  Initial: {{ item.initial_score }}% &rarr; Follow-Up: <strong style="color: #fff;">{{ item.followup_score }}%</strong>
+                </div>
+              </div>
+              <div style="text-align: right;">
+                <span class="badge badge-strong" style="font-size: 0.86rem; font-family: 'JetBrains Mono', monospace;">
+                  {{ "+" if item.delta >= 0 else "" }}{{ item.delta }}% pts
+                </span>
+                <div style="font-size: 0.76rem; color: var(--status-strong); font-weight: 600; margin-top: 0.25rem;">
+                  {{ item.followup_status }}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+  {% else %}
+    <!-- Prompt to take Quiz -->
+    <div class="card" style="text-align: center; padding: 4.5rem 2rem;">
+      <div style="width: 68px; height: 64px; border-radius: 16px; background: rgba(99, 102, 241, 0.14); color: var(--brand-primary-light); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem auto;">
+        <i data-lucide="clipboard-check" style="width: 32px; height: 32px;"></i>
+      </div>
+      <h2 style="font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.5rem;">No Follow-Up Attempt Recorded Yet</h2>
+      <p style="color: var(--text-muted); max-width: 540px; margin: 0 auto 2rem auto; font-size: 0.95rem; line-height: 1.6;">
+        After reviewing your personalized learning path, take the follow-up quiz to measure your concept improvement and update your knowledge map.
+      </p>
+      {% if followup_id %}
+        <a href="{{ url_for('take_assessment', assessment_id=followup_id) }}" class="btn btn-primary btn-lg" style="gap: 0.5rem;">
+          <span>Start Follow-Up Quiz Now</span>
+          <i data-lucide="arrow-right" style="width: 17px; height: 17px;"></i>
+        </a>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if followup_data %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const ctx = document.getElementById('improvementBarChart');
+  if (!ctx) return;
+
+  const improvements = {{ followup_data.concept_improvements | tojson }};
+  const labels = improvements.map(i => i.concept_name);
+  const beforeScores = improvements.map(i => i.initial_score);
+  const afterScores = improvements.map(i => i.followup_score);
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Initial Diagnostic (Before)',
+          data: beforeScores,
+          backgroundColor: 'rgba(244, 63, 94, 0.65)',
+          borderColor: '#f43f5e',
+          borderWidth: 1.5,
+          borderRadius: 6
+        },
+        {
+          label: 'Follow-Up Quiz (After)',
+          data: afterScores,
+          backgroundColor: 'rgba(16, 185, 129, 0.75)',
+          borderColor: '#10b981',
+          borderWidth: 1.5,
+          borderRadius: 6
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          min: 0,
+          max: 100,
+          ticks: { color: '#94a3b8', stepSize: 25 },
+          grid: { color: 'rgba(255, 255, 255, 0.06)' }
+        },
+        x: {
+          ticks: { color: '#cbd5e1', font: { weight: '600' } },
+          grid: { display: false }
+        }
+      },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { color: '#cbd5e1', font: { family: 'Plus Jakarta Sans', weight: '600' } }
+        }
+      }
+    }
+  });
+});
+</script>
+{% endif %}
+{% endblock %}

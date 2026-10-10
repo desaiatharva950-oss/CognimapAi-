@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Register — Cognimap AI{% endblock %}
+
+{% block content %}
+<div style="max-width: 480px; margin: 3rem auto;">
+  <div class="card card-glow" style="padding: 2.5rem;">
+    <div style="text-align: center; margin-bottom: 2rem;">
+      <div class="brand-icon" style="margin: 0 auto 1.25rem auto; width: 50px; height: 50px;">
+        <i data-lucide="user-plus" style="width: 24px; height: 24px;"></i>
+      </div>
+      <h2 style="font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em;">Create Your Account</h2>
+      <p style="color: var(--text-muted); font-size: 0.92rem; margin-top: 0.35rem;">Join Cognimap AI with role-based access</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('register') }}">
+      <div class="form-group">
+        <label class="form-label" for="reg-name">Full Name</label>
+        <div style="position: relative;">
+          <input type="text" name="name" id="reg-name" class="form-control" placeholder="e.g. Atharva Desai" required autocomplete="name" style="padding-left: 2.5rem;">
+          <i data-lucide="user" style="position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); width: 17px; height: 17px; color: var(--text-dim);"></i>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="reg-email">Email Address</label>
+        <div style="position: relative;">
+          <input type="email" name="email" id="reg-email" class="form-control" placeholder="name@cognimap.edu" required autocomplete="email" style="padding-left: 2.5rem;">
+          <i data-lucide="mail" style="position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); width: 17px; height: 17px; color: var(--text-dim);"></i>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="role-select">Select Academic Role</label>
+        <div style="position: relative;">
+          <select name="role" id="role-select" class="form-control" onchange="toggleFacultyField(this.value)" required style="padding-left: 2.5rem;">
+            <option value="student">Student (Diagnostics, Personalized Paths &amp; Quizzes)</option>
+            <option value="lecturer">Lecturer / Faculty (Curriculum, Analytics &amp; DAG)</option>
+          </select>
+          <i data-lucide="shield" style="position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); width: 17px; height: 17px; color: var(--text-dim);"></i>
+        </div>
+      </div>
+
+      <div class="form-group" id="faculty-code-group" style="display: none; background: rgba(99, 102, 241, 0.08); padding: 1.15rem; border-radius: var(--radius-sm); border: 1px solid rgba(99, 102, 241, 0.25);">
+        <label class="form-label" for="faculty_code" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Faculty Verification Code</span>
+          <span class="badge badge-purple" style="font-size: 0.72rem;">Authorized Personnel</span>
+        </label>
+        <input type="password" name="faculty_code" id="faculty_code" class="form-control" placeholder="Enter faculty access code">
+        <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.45rem;">
+          Faculty role requires institutional authorization. Default key: <code>FACULTY2026</code>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="reg-password">Password</label>
+        <div style="position: relative;">
+          <input type="password" name="password" id="reg-password" class="form-control" placeholder="Minimum 6 characters" required minlength="6" autocomplete="new-password" style="padding-left: 2.5rem;">
+          <i data-lucide="lock" style="position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); width: 17px; height: 17px; color: var(--text-dim);"></i>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.75rem; padding: 0.8rem; font-weight: 700;">
+        <span>Complete Registration</span>
+        <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
+      </button>
+    </form>
+
+    <div style="margin-top: 1.5rem; text-align: center; font-size: 0.88rem; color: var(--text-muted);">
+      Already have an account? <a href="{{ url_for('login') }}" style="color: var(--brand-primary-light); text-decoration: none; font-weight: 600;">Sign in here</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleFacultyField(val) {
+  const grp = document.getElementById('faculty-code-group');
+  const inp = document.getElementById('faculty_code');
+  if (val === 'lecturer') {
+    grp.style.display = 'block';
+    inp.required = true;
+  } else {
+    grp.style.display = 'none';
+    inp.required = false;
+  }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const sel = document.getElementById('role-select');
+  if (sel) toggleFacultyField(sel.value);
+});
+</script>
+{% endblock %}

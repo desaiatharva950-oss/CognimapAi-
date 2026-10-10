@@ -1,0 +1,382 @@
+{% extends "base.html" %}
+
+{% block title %}Student Knowledge Dashboard — Cognimap AI{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1.25rem;">
+  <div>
+    <div style="display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+      <span class="badge badge-cyan">
+        <i data-lucide="book-open" style="width: 13px; height: 13px;"></i>
+        {% if subject %}{{ subject.subject_name }} ({{ subject.code }}){% else %}Data Structures &amp; Algorithms (CS204){% endif %}
+      </span>
+      <span class="badge badge-unassessed">Student Analytics</span>
+    </div>
+    <h1 class="page-title">Welcome back, {{ user.name }}</h1>
+    <p class="page-subtitle">Your real-time concept knowledge diagnostics &amp; personalized learning hub</p>
+  </div>
+  <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+    <a href="{{ url_for('knowledge_map_view') }}" class="btn btn-secondary">
+      <i data-lucide="git-fork" style="width: 17px; height: 17px; color: var(--brand-cyan);"></i>
+      <span>Knowledge Map</span>
+    </a>
+    <a href="{{ url_for('learning_path_view') }}" class="btn btn-primary">
+      <i data-lucide="compass" style="width: 17px; height: 17px;"></i>
+      <span>Study Path</span>
+    </a>
+  </div>
+</div>
+
+<!-- Key Stat Counters -->
+<div class="grid-4" style="margin-bottom: 2rem;">
+  <div class="stat-card">
+    <div class="stat-icon" style="background: rgba(99, 102, 241, 0.14); color: var(--brand-primary-light);">
+      <i data-lucide="bar-chart-2"></i>
+    </div>
+    <div>
+      <div class="stat-val">
+        {% if attempts %}
+          {{ attempts[0].percentage }}%
+        {% else %}
+          --
+        {% endif %}
+      </div>
+      <div class="stat-label">Diagnostic Score</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon" style="background: var(--status-strong-bg); color: var(--status-strong);">
+      <i data-lucide="check-circle-2"></i>
+    </div>
+    <div>
+      <div class="stat-val" style="color: var(--status-strong);">{{ strong_count }}</div>
+      <div class="stat-label">Strong Concepts (&ge; 75%)</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon" style="background: var(--status-ni-bg); color: var(--status-ni);">
+      <i data-lucide="alert-circle"></i>
+    </div>
+    <div>
+      <div class="stat-val" style="color: var(--status-ni);">{{ improve_count }}</div>
+      <div class="stat-label">Needs Imp (50-74%)</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon" style="background: var(--status-weak-bg); color: var(--status-weak);">
+      <i data-lucide="alert-triangle"></i>
+    </div>
+    <div>
+      <div class="stat-val" style="color: var(--status-weak);">{{ weak_count }}</div>
+      <div class="stat-label">Weak Concepts (&lt; 50%)</div>
+    </div>
+  </div>
+</div>
+
+<!-- Prerequisite Gap Analysis Alert Callout -->
+{% if prereq_gaps %}
+  <div class="alert-callout alert-callout-danger">
+    <div style="display: flex; align-items: flex-start; gap: 1.25rem;">
+      <div style="width: 42px; height: 42px; border-radius: 10px; background: rgba(244, 63, 94, 0.2); display: flex; align-items: center; justify-content: center; color: var(--status-weak); flex-shrink: 0;">
+        <i data-lucide="git-merge" style="width: 22px; height: 22px;"></i>
+      </div>
+      <div style="flex: 1;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+          <h3 style="font-size: 1.1rem; font-weight: 700; color: #fff;">
+            Prerequisite Dependency Alerts Detected
+          </h3>
+          <span class="badge badge-weak">High Priority Action</span>
+        </div>
+        <p style="font-size: 0.9rem; color: #fda4af; margin-bottom: 0.85rem; line-height: 1.5;">
+          Cognimap AI identified that your performance in higher-level concepts is constrained by foundational gaps in upstream prerequisites.
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+          {% for gap in prereq_gaps %}
+            <div style="background: rgba(9, 13, 22, 0.5); padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.86rem; color: #ffe4e6; border: 1px solid rgba(244, 63, 94, 0.2);">
+              <strong style="color: #fff;">{{ gap.concept_name }}:</strong> {{ gap.explanation }}
+            </div>
+          {% endfor %}
+        </div>
+        <div style="margin-top: 1rem;">
+          <a href="{{ url_for('learning_path_view') }}" class="btn btn-sm btn-primary">
+            <span>Start Suggested Prerequisite Revision</span>
+            <i data-lucide="arrow-right" style="width: 14px; height: 14px;"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+<!-- Follow-up Observed Improvement Card (if exists) -->
+{% if followup_data %}
+  <div class="card" style="margin-bottom: 2rem; border-color: rgba(16, 185, 129, 0.35); background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(18, 25, 41, 0.9) 100%);">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.25rem; margin-bottom: 1.25rem;">
+      <div>
+        <span class="badge badge-strong" style="margin-bottom: 0.45rem;">
+          <i data-lucide="trending-up" style="width: 13px; height: 13px;"></i>
+          Follow-Up Re-assessment
+        </span>
+        <h3 style="font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em;">Observed Learning Gains</h3>
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.2rem;">
+          Measured progress between initial diagnostic and targeted follow-up assessment.
+        </p>
+      </div>
+      <div style="text-align: right; background: rgba(9, 13, 22, 0.6); padding: 0.75rem 1.25rem; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.25);">
+        <div style="font-size: 2rem; font-weight: 800; color: var(--status-strong); line-height: 1;">
+          +{{ followup_data.overall_improvement }}% pts
+        </div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+          {{ followup_data.previous_overall_score }}% &rarr; {{ followup_data.new_overall_score }}%
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-4" style="margin-top: 1rem;">
+      {% for item in followup_data.concept_improvements %}
+        <div style="background: rgba(9, 13, 22, 0.55); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+          <div style="font-weight: 700; font-size: 0.92rem; margin-bottom: 0.35rem; color: var(--text-main);">{{ item.concept_name }}</div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+            <span style="color: var(--text-dim);">{{ item.initial_score }}% &rarr; <strong style="color: #fff;">{{ item.followup_score }}%</strong></span>
+            <span style="color: var(--status-strong); font-weight: 700;">{{ "+" if item.delta >= 0 else "" }}{{ item.delta }}% pts</span>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+<!-- Charts & Performance Section -->
+<div class="grid-2" style="margin-bottom: 2rem;">
+  <!-- Radar Chart Card -->
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <div>
+        <h3 style="font-size: 1.18rem; font-weight: 700;">Concept Mastery Radar</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Visualizing competency symmetry across core syllabus topics</p>
+      </div>
+      <span class="badge badge-unassessed">Multi-Axis</span>
+    </div>
+    <div style="height: 320px; position: relative;">
+      <canvas id="conceptRadarChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Priority Learning Sequence Card -->
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+      <div>
+        <h3 style="font-size: 1.18rem; font-weight: 700;">Topological Learning Path</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Personalized revision order based on prerequisite dependencies</p>
+      </div>
+      <a href="{{ url_for('learning_path_view') }}" class="btn btn-secondary btn-sm" style="gap: 0.4rem;">
+        <span>Full Path</span>
+        <i data-lucide="arrow-right" style="width: 14px; height: 14px;"></i>
+      </a>
+    </div>
+
+    {% if learning_path %}
+      <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+        {% for step in learning_path[:4] %}
+          <div style="padding: 0.9rem 1.1rem; border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); display: flex; align-items: center; gap: 1rem;">
+            <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--brand-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.88rem; flex-shrink: 0; font-family: 'JetBrains Mono', monospace;">
+              {{ step.priority }}
+            </div>
+            <div style="flex: 1;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 700; font-size: 0.94rem; color: var(--text-main);">{{ step.concept_name }}</span>
+                {% if step.status %}
+                  <span class="badge {% if step.status == 'Weak' %}badge-weak{% elif step.status == 'Needs Improvement' %}badge-ni{% else %}badge-strong{% endif %}">
+                    {{ step.status }} ({{ step.score }}%)
+                  </span>
+                {% endif %}
+              </div>
+              <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem;">
+                {{ step.recommendation_reason[:95] }}...
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div style="text-align: center; padding: 2.5rem; color: var(--text-dim);">
+        <i data-lucide="clipboard-list" style="width: 36px; height: 36px; margin: 0 auto 0.75rem auto; opacity: 0.4; display: block;"></i>
+        Complete your initial assessment to generate a customized learning path.
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Concept Scores Table -->
+<div class="card" style="margin-bottom: 2rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h3 style="font-size: 1.18rem; font-weight: 700;">Concept-Wise Mastery Breakdown</h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted);">Atomic concept evaluation against configurable thresholds (&ge;75% Strong, 50-74% Needs Improvement, &lt;50% Weak)</p>
+    </div>
+    <a href="{{ url_for('knowledge_map_view') }}" class="btn btn-secondary btn-sm" style="gap: 0.4rem;">
+      <i data-lucide="git-fork" style="width: 14px; height: 14px;"></i>
+      <span>Interactive Graph</span>
+    </a>
+  </div>
+
+  <div class="table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Concept</th>
+          <th>Unit &amp; Topic</th>
+          <th>Score</th>
+          <th>Status</th>
+          <th>Mastery Meter</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in concepts_perf %}
+          <tr>
+            <td style="font-weight: 700; color: var(--text-main);">{{ c.concept_name }}</td>
+            <td style="color: var(--text-muted); font-size: 0.85rem;">{{ c.unit_name }} &bull; {{ c.topic_name }}</td>
+            <td style="font-weight: 700; font-family: 'JetBrains Mono', monospace;">{{ c.score }}%</td>
+            <td>
+              <span class="badge {% if c.status == 'Strong' %}badge-strong{% elif c.status == 'Needs Improvement' %}badge-ni{% else %}badge-weak{% endif %}">
+                <span class="badge-dot"></span> {{ c.status }}
+              </span>
+            </td>
+            <td style="width: 180px;">
+              <div class="progress-bar-container">
+                <div class="progress-bar-fill" style="width: {{ c.score }}%; background: {% if c.status == 'Strong' %}var(--status-strong){% elif c.status == 'Needs Improvement' %}var(--status-ni){% else %}var(--status-weak){% endif %};"></div>
+              </div>
+            </td>
+            <td>
+              <a href="{{ url_for('learning_path_view') }}#concept-{{ c.concept_id }}" class="btn btn-secondary btn-sm" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">
+                <span>Revise</span>
+                <i data-lucide="chevron-right" style="width: 13px; height: 13px;"></i>
+              </a>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="6" style="text-align: center; padding: 2.5rem; color: var(--text-dim);">
+              No diagnostic assessments submitted yet. Take an assessment below to map your concept mastery.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Available Assessments Section -->
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+    <div>
+      <h3 style="font-size: 1.18rem; font-weight: 700;">Assigned Diagnostic Assessments</h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted);">
+        Take assigned concept-level tests to update your real-time knowledge map
+      </p>
+    </div>
+    <span class="badge badge-cyan">{{ assessments|length }} Available</span>
+  </div>
+
+  <div class="grid-2">
+    {% for asm in assessments %}
+      <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); padding: 1.35rem 1.5rem; border-radius: var(--radius-sm); display: flex; justify-content: space-between; align-items: center; gap: 1rem;" class="card-lift">
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem;">
+            <span class="badge {% if asm.assessment_type == 'followup' %}badge-ni{% else %}badge-strong{% endif %}">
+              {{ asm.assessment_type }}
+            </span>
+          </div>
+          <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main);">{{ asm.title }}</h4>
+          <div style="font-size: 0.84rem; color: var(--text-muted); margin-top: 0.3rem; display: flex; align-items: center; gap: 0.75rem;">
+            <span style="display: inline-flex; align-items: center; gap: 0.3rem;">
+              <i data-lucide="clock" style="width: 14px; height: 14px;"></i> {{ asm.duration_minutes }} mins
+            </span>
+            <span>&bull;</span>
+            <span>{{ asm.subject_name }}</span>
+          </div>
+        </div>
+        <a href="{{ url_for('take_assessment', assessment_id=asm.assessment_id) }}" class="btn btn-primary btn-sm">
+          <span>Start Test</span>
+          <i data-lucide="arrow-right" style="width: 14px; height: 14px;"></i>
+        </a>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const ctx = document.getElementById('conceptRadarChart');
+  if (!ctx) return;
+
+  const labels = {{ concepts_perf | map(attribute='concept_name') | list | tojson }};
+  const scores = {{ concepts_perf | map(attribute='score') | list | tojson }};
+
+  if (!labels || labels.length === 0) {
+    ctx.parentElement.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-dim);text-align:center;padding:1.5rem;"><i data-lucide="pie-chart" style="width:36px;height:36px;margin-bottom:0.5rem;opacity:0.4;"></i><div style="font-weight:600;margin-bottom:0.25rem;">No Assessment Data Yet</div><div style="font-size:0.84rem;">Complete an assigned test below to generate your concept radar profile.</div></div>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    return;
+  }
+
+  new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Concept Mastery (%)',
+        data: scores,
+        backgroundColor: 'rgba(99, 102, 241, 0.2)',
+        borderColor: '#6366f1',
+        pointBackgroundColor: '#8b5cf6',
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: '#6366f1',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          min: 0,
+          max: 100,
+          ticks: {
+            stepSize: 25,
+            color: '#94a3b8',
+            backdropColor: 'transparent'
+          },
+          grid: {
+            color: 'rgba(255, 255, 255, 0.08)'
+          },
+          angleLines: {
+            color: 'rgba(255, 255, 255, 0.08)'
+          },
+          pointLabels: {
+            color: '#cbd5e1',
+            font: {
+              family: 'Plus Jakarta Sans',
+              size: 11,
+              weight: '600'
+            }
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          display: false
+        }
+      }
+    }
+  });
+});
+</script>
+{% endblock %}

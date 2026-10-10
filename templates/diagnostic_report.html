@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Assessment Diagnostic Report — Cognimap AI{% endblock %}
+
+{% block content %}
+<div style="max-width: 1080px; margin: 0 auto;">
+  <!-- Header -->
+  <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1.25rem;">
+    <div>
+      <div style="display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+        <span class="badge badge-strong">
+          <i data-lucide="check-circle-2" style="width: 13px; height: 13px;"></i>
+          Diagnostic Complete
+        </span>
+        <span class="badge badge-cyan">Automated Evaluation</span>
+      </div>
+      <h1 class="page-title">{{ attempt.title }}</h1>
+      <p class="page-subtitle">
+        Student: <strong style="color: var(--text-main);">{{ attempt.student_name }}</strong> &bull; Completed on {{ attempt.completed_at }}
+      </p>
+    </div>
+    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+      <a href="{{ url_for('knowledge_map_view') }}" class="btn btn-secondary">
+        <i data-lucide="git-fork" style="width: 16px; height: 16px; color: var(--brand-cyan);"></i>
+        <span>View in Knowledge Map</span>
+      </a>
+      <a href="{{ url_for('learning_path_view') }}" class="btn btn-primary" style="gap: 0.5rem;">
+        <i data-lucide="compass" style="width: 16px; height: 16px;"></i>
+        <span>Generated Learning Path</span>
+        <i data-lucide="arrow-right" style="width: 14px; height: 14px;"></i>
+      </a>
+    </div>
+  </div>
+
+  <!-- Score Summary Card -->
+  <div class="card card-glow" style="padding: 2.25rem; margin-bottom: 2rem; background: linear-gradient(135deg, rgba(18, 25, 41, 0.95) 0%, rgba(26, 36, 60, 0.85) 100%);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.75rem;">
+      <div>
+        <div style="font-size: 0.84rem; text-transform: uppercase; color: var(--text-dim); font-weight: 700; letter-spacing: 0.06em;">
+          Overall Diagnostic Score
+        </div>
+        <div style="font-size: 3.8rem; font-weight: 800; line-height: 1; margin: 0.5rem 0; letter-spacing: -0.03em; color: {% if attempt.percentage >= 75 %}var(--status-strong){% elif attempt.percentage >= 50 %}var(--status-ni){% else %}var(--status-weak){% endif %};">
+          {{ attempt.percentage }}%
+        </div>
+        <div style="font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.85rem;">
+          <span>Marks: <strong style="color: #fff;">{{ attempt.score }} / {{ attempt.max_score }}</strong></span>
+          <span>&bull;</span>
+          <span style="display: inline-flex; align-items: center; gap: 0.35rem;">
+            <i data-lucide="clock" style="width: 14px; height: 14px;"></i>
+            {{ attempt.time_taken_seconds // 60 }}m {{ attempt.time_taken_seconds % 60 }}s taken
+          </span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 1.25rem; flex-wrap: wrap;">
+        <div style="background: rgba(9, 13, 22, 0.6); padding: 1.25rem 1.5rem; border-radius: 12px; border: 1px solid var(--border-subtle); min-width: 130px; text-align: center;">
+          <div style="font-size: 1.8rem; font-weight: 800; color: var(--status-strong);">
+            {{ concepts | selectattr('status', 'equalto', 'Strong') | list | length }}
+          </div>
+          <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-dim); font-weight: 700; margin-top: 0.2rem;">Strong Concepts</div>
+        </div>
+
+        <div style="background: rgba(9, 13, 22, 0.6); padding: 1.25rem 1.5rem; border-radius: 12px; border: 1px solid var(--border-subtle); min-width: 130px; text-align: center;">
+          <div style="font-size: 1.8rem; font-weight: 800; color: var(--status-ni);">
+            {{ concepts | selectattr('status', 'equalto', 'Needs Improvement') | list | length }}
+          </div>
+          <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-dim); font-weight: 700; margin-top: 0.2rem;">Needs Imp</div>
+        </div>
+
+        <div style="background: rgba(9, 13, 22, 0.6); padding: 1.25rem 1.5rem; border-radius: 12px; border: 1px solid var(--border-subtle); min-width: 130px; text-align: center;">
+          <div style="font-size: 1.8rem; font-weight: 800; color: var(--status-weak);">
+            {{ concepts | selectattr('status', 'equalto', 'Weak') | list | length }}
+          </div>
+          <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-dim); font-weight: 700; margin-top: 0.2rem;">Weak Concepts</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prerequisite Analysis Section -->
+  {% if prereq_gaps %}
+    <div class="alert-callout alert-callout-danger">
+      <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+        <i data-lucide="git-merge" style="width: 22px; height: 22px; color: var(--status-weak);"></i>
+        <div>
+          <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff;">AI Prerequisite Dependency Diagnostics</h3>
+          <p style="font-size: 0.85rem; color: #fda4af;">Explainable analysis correlating higher-order topic weaknesses with root prerequisite gaps</p>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+        {% for gap in prereq_gaps %}
+          <div style="background: rgba(9, 13, 22, 0.5); border: 1px solid rgba(244, 63, 94, 0.25); border-left: 3px solid var(--status-weak); padding: 0.95rem 1.2rem; border-radius: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+              <span style="font-weight: 700; font-size: 0.96rem; color: #fff;">{{ gap.concept_name }}</span>
+              <span class="badge badge-weak">{{ gap.concept_score }}% ({{ gap.concept_status }})</span>
+            </div>
+            <p style="font-size: 0.88rem; color: #fecdd3; line-height: 1.5;">
+              {{ gap.explanation }}
+            </p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Concept Breakdown Table -->
+  <div class="card" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+      <div>
+        <h3 style="font-size: 1.18rem; font-weight: 700;">Concept-Level Performance Matrix</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Detailed competency audit across curriculum syllabus units</p>
+      </div>
+      <span class="badge badge-cyan">{{ concepts|length }} Concepts Evaluated</span>
+    </div>
+
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Concept</th>
+            <th>Unit &amp; Topic</th>
+            <th>Score</th>
+            <th>Questions</th>
+            <th>Status</th>
+            <th>Mastery Meter</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in concepts %}
+            <tr>
+              <td style="font-weight: 700; color: var(--text-main);">{{ c.concept_name }}</td>
+              <td style="color: var(--text-muted); font-size: 0.85rem;">{{ c.unit_name }} &bull; {{ c.topic_name }}</td>
+              <td style="font-weight: 700; font-family: 'JetBrains Mono', monospace;">{{ c.score }}%</td>
+              <td style="font-size: 0.85rem; color: var(--text-muted);">{{ c.correct_questions }}/{{ c.total_questions }} correct</td>
+              <td>
+                <span class="badge {% if c.status == 'Strong' %}badge-strong{% elif c.status == 'Needs Improvement' %}badge-ni{% else %}badge-weak{% endif %}">
+                  <span class="badge-dot"></span> {{ c.status }}
+                </span>
+              </td>
+              <td style="width: 160px;">
+                <div class="progress-bar-container">
+                  <div class="progress-bar-fill" style="width: {{ c.score }}%; background: {% if c.status == 'Strong' %}var(--status-strong){% elif c.status == 'Needs Improvement' %}var(--status-ni){% else %}var(--status-weak){% endif %};"></div>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Detailed Question Review Section -->
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+      <div>
+        <h3 style="font-size: 1.18rem; font-weight: 700;">Question-by-Question Audit</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">
+          Detailed breakdown of submitted answers, official answer keys, and pedagogical rationales
+        </p>
+      </div>
+      <span class="badge badge-unassessed">{{ reviews|length }} Responses</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+      {% for r in reviews %}
+        <div style="padding: 1.35rem; border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.02); border: 1px solid {% if r.correctness == 1 %}rgba(16, 185, 129, 0.25){% else %}rgba(244, 63, 94, 0.25){% endif %};">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.65rem;">
+              <span style="font-weight: 800; font-size: 1rem; color: var(--brand-primary-light); font-family: 'JetBrains Mono', monospace;">
+                Q{{ loop.index }}
+              </span>
+              <span class="badge badge-unassessed">
+                <i data-lucide="tag" style="width: 12px; height: 12px;"></i>
+                {{ r.concept_name }}
+              </span>
+              <span class="badge {% if r.difficulty == 'Easy' %}badge-strong{% elif r.difficulty == 'Medium' %}badge-ni{% else %}badge-weak{% endif %}">
+                {{ r.difficulty }}
+              </span>
+            </div>
+            <span class="badge {% if r.correctness == 1 %}badge-strong{% else %}badge-weak{% endif %}">
+              {% if r.correctness == 1 %}
+                <i data-lucide="check" style="width: 12px; height: 12px;"></i> Correct (+{{ r.marks_awarded }} mark)
+              {% else %}
+                <i data-lucide="x" style="width: 12px; height: 12px;"></i> Incorrect (0 marks)
+              {% endif %}
+            </span>
+          </div>
+
+          <p style="font-size: 1rem; font-weight: 600; margin-bottom: 1.15rem; color: var(--text-main); line-height: 1.5;">
+            {{ r.question_text }}
+          </p>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; margin-bottom: 0.85rem; font-size: 0.88rem;">
+            <div style="padding: 0.75rem 1rem; border-radius: 8px; background: {% if r.correctness == 1 %}rgba(16, 185, 129, 0.08){% else %}rgba(244, 63, 94, 0.08){% endif %}; border: 1px solid {% if r.correctness == 1 %}rgba(16, 185, 129, 0.25){% else %}rgba(244, 63, 94, 0.25){% endif %};">
+              <span style="color: var(--text-dim); display: block; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.2rem;">Your Submitted Answer:</span>
+              <strong style="color: var(--text-main);">{{ r.selected_answer or "No answer submitted" }}</strong>
+            </div>
+
+            <div style="padding: 0.75rem 1rem; border-radius: 8px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25);">
+              <span style="color: var(--text-dim); display: block; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.2rem;">Correct Answer:</span>
+              <strong style="color: var(--status-strong);">{{ r.correct_answer }}</strong>
+            </div>
+          </div>
+
+          {% if r.explanation %}
+            <div style="font-size: 0.86rem; color: var(--text-muted); background: rgba(9, 13, 22, 0.6); padding: 0.75rem 1rem; border-radius: 8px; border-left: 3px solid var(--brand-primary); line-height: 1.55;">
+              <strong style="color: #fff;">Pedagogical Explanation:</strong> {{ r.explanation }}
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

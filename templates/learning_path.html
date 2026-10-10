@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Personalized Learning Path — Cognimap AI{% endblock %}
+
+{% block content %}
+<div style="max-width: 960px; margin: 0 auto;">
+  <!-- Header -->
+  <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1.25rem;">
+    <div>
+      <div style="display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+        <span class="badge badge-strong">
+          <i data-lucide="git-merge" style="width: 13px; height: 13px;"></i>
+          Topological DAG Sequencing
+        </span>
+        <span class="badge badge-cyan">Adaptive AI</span>
+      </div>
+      <h1 class="page-title">Personalized Learning Path</h1>
+      <p class="page-subtitle">
+        AI-synthesized revision guide prioritizing foundational prerequisite gaps before higher-level topics.
+      </p>
+    </div>
+    <a href="{{ url_for('followup_quiz_view') }}" class="btn btn-primary" style="gap: 0.5rem;">
+      <i data-lucide="check-circle-2" style="width: 17px; height: 17px;"></i>
+      <span>Take Follow-Up Quiz</span>
+      <i data-lucide="arrow-right" style="width: 15px; height: 15px;"></i>
+    </a>
+  </div>
+
+  <!-- Rationale Box -->
+  <div class="card" style="margin-bottom: 2rem; background: rgba(99, 102, 241, 0.06); border-color: rgba(99, 102, 241, 0.28);">
+    <div style="display: flex; align-items: flex-start; gap: 1rem;">
+      <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(99, 102, 241, 0.16); color: var(--brand-primary-light); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        <i data-lucide="lightbulb" style="width: 20px; height: 20px;"></i>
+      </div>
+      <div>
+        <h4 style="font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 0.35rem;">Why this specific topological order?</h4>
+        <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.6;">
+          Cognimap AI executes a topological sort on your curriculum dependency DAG. By rectifying foundational vulnerabilities (e.g., <strong>Recursion</strong> and <strong>Trees</strong>) first, cognitive friction is removed before tackling complex downstream algorithms like <strong>Graphs</strong> and <strong>BFS/DFS</strong>.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Steps List -->
+  <div style="display: flex; flex-direction: column; gap: 1.75rem;">
+    {% for step in steps %}
+      <div class="card card-glow" id="concept-{{ step.concept_id }}" style="padding: 2.25rem; border-left: 4px solid {% if step.is_prerequisite_gap %}var(--brand-cyan){% elif step.status == 'Weak' %}var(--status-weak){% else %}var(--status-ni){% endif %};">
+        <!-- Step Header -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.35rem;">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <div style="width: 42px; height: 42px; border-radius: 10px; background: {% if step.is_prerequisite_gap %}var(--brand-cyan){% else %}var(--brand-primary){% endif %}; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; flex-shrink: 0;">
+              {{ step.priority }}
+            </div>
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.25rem;">
+                <h3 style="font-size: 1.35rem; font-weight: 800; color: var(--text-main);">{{ step.concept_name }}</h3>
+                {% if step.status %}
+                  <span class="badge {% if step.status == 'Weak' %}badge-weak{% elif step.status == 'Needs Improvement' %}badge-ni{% else %}badge-strong{% endif %}">
+                    {{ step.status }} ({{ step.score }}%)
+                  </span>
+                {% endif %}
+                {% if step.is_prerequisite_gap %}
+                  <span class="badge badge-cyan">
+                    <i data-lucide="git-branch" style="width: 12px; height: 12px;"></i>
+                    Prerequisite Root
+                  </span>
+                {% endif %}
+              </div>
+              <div style="font-size: 0.85rem; color: var(--text-dim);">
+                {{ step.unit_name }} &bull; {{ step.topic_name }}
+              </div>
+            </div>
+          </div>
+
+          <label style="display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.86rem; color: var(--text-muted); cursor: pointer; padding: 0.4rem 0.75rem; border-radius: 6px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle);">
+            <input type="checkbox" onchange="toggleStepCompleted(this, {{ step.concept_id }})" style="accent-color: var(--status-strong); width: 16px; height: 16px; cursor: pointer;">
+            <span>Mark Reviewed</span>
+          </label>
+        </div>
+
+        <!-- AI Recommendation Rationale -->
+        <div style="background: rgba(9, 13, 22, 0.6); padding: 1rem 1.25rem; border-radius: 8px; border: 1px solid var(--border-subtle); margin-bottom: 1.35rem;">
+          <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--brand-primary-light); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.4rem;">
+            <i data-lucide="zap" style="width: 14px; height: 14px;"></i>
+            Pedagogical Rationale
+          </div>
+          <p style="font-size: 0.92rem; color: var(--text-main); line-height: 1.55;">
+            {{ step.recommendation_reason }}
+          </p>
+        </div>
+
+        <!-- Detailed Notes & Explanation -->
+        <div style="margin-bottom: 1.35rem;">
+          <h4 style="font-size: 0.96rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.45rem; display: flex; align-items: center; gap: 0.4rem;">
+            <i data-lucide="book" style="width: 16px; height: 16px; color: var(--text-dim);"></i>
+            Core Concept Theory
+          </h4>
+          <p style="font-size: 0.92rem; color: var(--text-muted); line-height: 1.65;">
+            {{ step.explanation_md or step.description }}
+          </p>
+        </div>
+
+        <!-- Key Points -->
+        {% if step.key_points %}
+          <div style="background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.22); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.35rem;">
+            <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--status-strong); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.4rem;">
+              <i data-lucide="check" style="width: 14px; height: 14px;"></i>
+              Key Mastery Principles
+            </div>
+            <p style="font-size: 0.9rem; color: #a7f3d0; line-height: 1.6;">
+              {{ step.key_points }}
+            </p>
+          </div>
+        {% endif %}
+
+        <!-- Code Snippet -->
+        {% if step.code_example %}
+          <div>
+            <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-dim); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.45rem; display: flex; align-items: center; gap: 0.4rem;">
+              <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+              Canonical Implementation / Code Reference
+            </div>
+            <pre style="background: rgba(7, 10, 17, 0.85); padding: 1.15rem; border-radius: 8px; font-size: 0.86rem; border: 1px solid var(--border-subtle); color: #cbd5e1; overflow-x: auto; line-height: 1.5;"><code>{{ step.code_example }}</code></pre>
+          </div>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="card" style="text-align: center; padding: 4rem 2rem;">
+        <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--status-strong-bg); color: var(--status-strong); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem auto;">
+          <i data-lucide="party-popper" style="width: 32px; height: 32px;"></i>
+        </div>
+        <h3 style="font-size: 1.4rem; font-weight: 700; margin-bottom: 0.5rem;">No Active Revision Steps Required</h3>
+        <p style="color: var(--text-muted); max-width: 520px; margin: 0 auto 1.75rem auto; font-size: 0.94rem;">
+          You have achieved mastery (&ge;75%) across all evaluated concepts, or you have not completed a diagnostic assessment yet.
+        </p>
+        <a href="{{ url_for('student_dashboard') }}" class="btn btn-primary">
+          <span>View Assigned Assessments</span>
+          <i data-lucide="arrow-right" style="width: 15px; height: 15px;"></i>
+        </a>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Bottom CTA -->
+  <div class="card" style="text-align: center; padding: 2.75rem 2rem; margin-top: 3.5rem; background: linear-gradient(135deg, rgba(28, 38, 62, 0.85) 0%, rgba(18, 25, 41, 0.95) 100%); border-color: rgba(99, 102, 241, 0.3);">
+    <h3 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Ready to Validate Your Gains?</h3>
+    <p style="font-size: 0.96rem; color: var(--text-muted); max-width: 600px; margin: 0 auto 1.75rem auto;">
+      Take the follow-up quiz to measure observed improvements on remediated prerequisite topics!
+    </p>
+    <a href="{{ url_for('followup_quiz_view') }}" class="btn btn-primary btn-lg" style="gap: 0.6rem;">
+      <i data-lucide="rocket" style="width: 18px; height: 18px;"></i>
+      <span>Launch Follow-Up Quiz</span>
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleStepCompleted(checkbox, conceptId) {
+  const card = document.getElementById(`concept-${conceptId}`);
+  if (card) {
+    if (checkbox.checked) {
+      card.style.opacity = '0.65';
+      card.style.borderColor = 'var(--status-strong)';
+      showToast('Concept revision marked as completed!', 'success');
+    } else {
+      card.style.opacity = '1';
+      card.style.borderColor = '';
+    }
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Student Drilldown: {{ student.name }} — Cognimap AI{% endblock %}
+
+{% block content %}
+<div style="max-width: 1180px; margin: 0 auto;">
+  <!-- Header -->
+  <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1.25rem;">
+    <div>
+      <a href="{{ url_for('lecturer_dashboard') }}" style="color: var(--brand-primary-light); text-decoration: none; font-size: 0.88rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem; margin-bottom: 0.6rem;">
+        <i data-lucide="arrow-left" style="width: 15px; height: 15px;"></i>
+        <span>Back to Class Analytics</span>
+      </a>
+      <h1 class="page-title">{{ student.name }}</h1>
+      <p class="page-subtitle">
+        {{ student.email }} &bull; Individual Student Concept Knowledge Profile &amp; Remediation Trajectory
+      </p>
+    </div>
+
+    <div style="display: flex; gap: 0.75rem;">
+      <a href="{{ url_for('knowledge_map_view') }}?student_id={{ student.user_id }}" class="btn btn-secondary" style="gap: 0.45rem;">
+        <i data-lucide="git-fork" style="width: 16px; height: 16px; color: var(--brand-cyan);"></i>
+        <span>View Student's Knowledge Map</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Prerequisite Gap Alert Callout (if any) -->
+  {% if prereq_gaps %}
+    <div class="alert-callout alert-callout-danger">
+      <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem;">
+        <i data-lucide="git-merge" style="width: 18px; height: 18px; color: var(--status-weak);"></i>
+        <h3 style="font-size: 1.05rem; font-weight: 700; color: #fff;">
+          Identified Prerequisite Vulnerabilities
+        </h3>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 0.55rem; margin-top: 0.65rem;">
+        {% for gap in prereq_gaps %}
+          <div style="background: rgba(9, 13, 22, 0.55); padding: 0.75rem 1rem; border-radius: 6px; font-size: 0.86rem; color: #ffe4e6; border: 1px solid rgba(244, 63, 94, 0.2);">
+            <strong style="color: #fff;">{{ gap.concept_name }}:</strong> {{ gap.explanation }}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Follow-Up Observed Improvement Banner (if any) -->
+  {% if followup_data %}
+    <div class="card" style="padding: 1.65rem 2rem; margin-bottom: 2rem; border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.08);">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <span class="badge badge-strong" style="margin-bottom: 0.35rem;">
+            <i data-lucide="trending-up" style="width: 12px; height: 12px;"></i>
+            Follow-Up Quiz Result
+          </span>
+          <h3 style="font-size: 1.35rem; font-weight: 700; color: var(--text-main);">
+            Observed Improvement: <span style="color: var(--status-strong);">+{{ followup_data.overall_improvement }}% pts</span>
+          </h3>
+          <div style="font-size: 0.86rem; color: var(--text-muted); margin-top: 0.2rem;">
+            Initial Baseline: {{ followup_data.previous_overall_score }}% &rarr; Follow-Up Score: {{ followup_data.new_overall_score }}%
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Concept Mastery Matrix & Learning Path -->
+  <div class="grid-2" style="margin-bottom: 2rem;">
+    <!-- Concept Performance -->
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <h3 style="font-size: 1.18rem; font-weight: 700;">Concept Mastery Breakdown</h3>
+        <span class="badge badge-unassessed">{{ concepts|length }} Concepts</span>
+      </div>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+        Evaluated competency against mastery thresholds
+      </p>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Concept</th>
+              <th>Score</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in concepts %}
+              <tr>
+                <td style="font-weight: 600; color: var(--text-main);">{{ c.concept_name }}</td>
+                <td style="font-weight: 700; font-family: 'JetBrains Mono', monospace;">{{ c.score }}%</td>
+                <td>
+                  <span class="badge {% if c.status == 'Strong' %}badge-strong{% elif c.status == 'Needs Improvement' %}badge-ni{% else %}badge-weak{% endif %}">
+                    <span class="badge-dot"></span> {{ c.status }}
+                  </span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Active Learning Path -->
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <h3 style="font-size: 1.18rem; font-weight: 700;">Topological Learning Path</h3>
+        <span class="badge badge-cyan">Sequenced</span>
+      </div>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+        Ordered revision steps assigned to this student
+      </p>
+
+      {% if learning_path %}
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          {% for step in learning_path %}
+            <div style="padding: 0.85rem 1.1rem; border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); display: flex; align-items: center; gap: 0.85rem;">
+              <span style="width: 28px; height: 28px; border-radius: 8px; background: var(--brand-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.84rem; font-family: 'JetBrains Mono', monospace; flex-shrink: 0;">
+                {{ step.priority }}
+              </span>
+              <div style="flex: 1;">
+                <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main);">{{ step.concept_name }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">{{ step.recommendation_reason[:85] }}...</div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div style="text-align: center; padding: 2.5rem; color: var(--text-dim);">
+          <i data-lucide="check-circle" style="width: 32px; height: 32px; margin-bottom: 0.5rem; opacity: 0.5;"></i>
+          <div>No outstanding learning path steps.</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Attempt History -->
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+      <h3 style="font-size: 1.18rem; font-weight: 700;">Assessment Attempt History</h3>
+      <span class="badge badge-unassessed">{{ attempts|length }} Attempts</span>
+    </div>
+    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+      Chronological audit of completed tests and diagnostic evaluations
+    </p>
+
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Attempt ID</th>
+            <th>Assessment Title</th>
+            <th>Type</th>
+            <th>Score</th>
+            <th>Date</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in attempts %}
+            <tr>
+              <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.84rem; color: var(--text-dim);">#{{ a.attempt_id }}</td>
+              <td style="font-weight: 700; color: var(--text-main);">{{ a.title }}</td>
+              <td>
+                <span class="badge {% if a.assessment_type == 'followup' %}badge-ni{% else %}badge-strong{% endif %}">
+                  {{ a.assessment_type }}
+                </span>
+              </td>
+              <td style="font-weight: 700; font-family: 'JetBrains Mono', monospace;">{{ a.percentage }}%</td>
+              <td style="color: var(--text-muted); font-size: 0.85rem;">{{ a.completed_at }}</td>
+              <td>
+                <a href="{{ url_for('diagnostic_report', attempt_id=a.attempt_id) }}" class="btn btn-secondary btn-sm" style="padding: 0.35rem 0.75rem; font-size: 0.82rem; gap: 0.35rem;">
+                  <span>Audit Report</span>
+                  <i data-lucide="arrow-right" style="width: 13px; height: 13px;"></i>
+                </a>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-dim);">No attempts recorded for this student yet.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

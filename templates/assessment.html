@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+
+{% block title %}Take Assessment: {{ assessment.title }} — Cognimap AI{% endblock %}
+
+{% block content %}
+<!-- Assessment Container -->
+<div style="max-width: 1080px; margin: 0 auto;">
+  <!-- Header with Timer and Progress -->
+  <div class="card" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem; padding: 1.35rem 1.75rem;">
+    <div>
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+        <span class="badge badge-strong">
+          <i data-lucide="play" style="width: 12px; height: 12px;"></i>
+          Active Assessment
+        </span>
+        <span class="badge badge-cyan">{{ assessment.subject_name }}</span>
+      </div>
+      <h2 style="font-size: 1.45rem; font-weight: 800; letter-spacing: -0.02em;">{{ assessment.title }}</h2>
+      <div style="font-size: 0.86rem; color: var(--text-muted); margin-top: 0.2rem;">
+        Total Questions: {{ questions|length }} &bull; Concept-Level Diagnostic Evaluation
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 1.5rem;">
+      <div id="timer-card" style="text-align: right; background: rgba(9, 13, 22, 0.6); padding: 0.5rem 1.15rem; border-radius: 8px; border: 1px solid var(--border-subtle); min-width: 140px; transition: border-color 0.3s ease, box-shadow 0.3s ease;">
+        <div style="font-size: 0.74rem; text-transform: uppercase; color: var(--text-dim); font-weight: 700; letter-spacing: 0.05em; display: flex; align-items: center; justify-content: flex-end; gap: 0.35rem;">
+          <i data-lucide="clock" id="timer-icon" style="width: 13px; height: 13px; color: var(--brand-cyan); transition: color 0.3s ease;"></i>
+          <span id="timer-label">Time Remaining</span>
+        </div>
+        <div id="assessment-timer" style="font-size: 1.4rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: var(--brand-cyan); transition: color 0.3s ease;">
+          --:--
+        </div>
+      </div>
+      <button onclick="submitAssessment(false)" id="btn-submit-assessment" class="btn btn-primary" style="gap: 0.5rem;">
+        <span>Submit Test</span>
+        <i data-lucide="send" style="width: 15px; height: 15px;"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Time Expired Notification Banner (Hidden until time expires) -->
+  <div id="time-expired-alert" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.45); color: #fca5a5; padding: 1rem 1.35rem; border-radius: 8px; margin-bottom: 1.5rem; align-items: center; justify-content: space-between; gap: 1rem; box-shadow: 0 4px 16px rgba(239, 68, 68, 0.2);">
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <i data-lucide="alert-triangle" style="width: 20px; height: 20px; color: #ef4444; flex-shrink: 0;"></i>
+      <div>
+        <strong style="color: #fff; font-size: 0.98rem; display: block;">Time Limit Expired!</strong>
+        <span style="font-size: 0.86rem; color: #fca5a5;">Your allowed time has ended. Assessment answers are being recorded and submitted automatically...</span>
+      </div>
+    </div>
+    <span class="badge badge-weak" style="font-size: 0.8rem; padding: 0.35rem 0.65rem;">Auto-Submitting</span>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 290px; gap: 1.5rem;">
+    <!-- Questions List -->
+    <div id="questions-wrapper" style="display: flex; flex-direction: column; gap: 1.5rem;">
+      {% for q in questions %}
+        {% set q_idx = loop.index %}
+        <div class="card question-card" id="q-card-{{ q_idx }}" data-qid="{{ q.question_id }}" style="padding: 1.85rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+            <div style="display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;">
+              <span style="font-weight: 800; font-size: 1.15rem; color: var(--brand-primary-light); font-family: 'JetBrains Mono', monospace;">
+                Q{{ q_idx }}
+              </span>
+              <span class="badge {% if q.difficulty == 'Easy' %}badge-strong{% elif q.difficulty == 'Medium' %}badge-ni{% else %}badge-weak{% endif %}">
+                {{ q.difficulty }}
+              </span>
+              <span class="badge badge-unassessed">
+                <i data-lucide="tag" style="width: 12px; height: 12px;"></i>
+                {{ q.concept_name }}
+              </span>
+            </div>
+            <span style="font-size: 0.82rem; color: var(--text-dim); font-weight: 600;">{{ q.marks }} mark</span>
+          </div>
+
+          <p style="font-size: 1.05rem; font-weight: 600; color: var(--text-main); margin-bottom: 1.35rem; line-height: 1.55;">
+            {{ q.question_text }}
+          </p>
+
+          <!-- Options -->
+          <div class="options-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
+            {% for opt in q.options %}
+              <label class="option-label" onclick="selectOption(this, {{ q.question_id }}, {{ q_idx }})">
+                <input type="radio" name="question_{{ q.question_id }}" value="{{ opt }}" style="display: none;">
+                <span class="option-dot"></span>
+                <span class="option-text" style="font-size: 0.94rem; color: var(--text-main); line-height: 1.4;">{{ opt }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- Sticky Navigation Sidebar -->
+    <div>
+      <div class="card" style="position: sticky; top: 5.5rem; padding: 1.5rem;">
+        <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.45rem;">
+          <i data-lucide="compass" style="width: 17px; height: 17px; color: var(--brand-primary-light);"></i>
+          Question Matrix
+        </h4>
+        <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+          <span id="answered-count" style="font-weight: 700; color: #fff;">0</span> of {{ questions|length }} answered
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 1.5rem;">
+          {% for q in questions %}
+            <a href="#q-card-{{ loop.index }}" id="nav-btn-{{ loop.index }}" class="btn btn-secondary btn-sm" style="padding: 0.45rem; font-size: 0.85rem; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-weight: 700;">
+              {{ loop.index }}
+            </a>
+          {% endfor %}
+        </div>
+
+        <div style="border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
+          <button onclick="submitAssessment(false)" id="btn-submit-sidebar" class="btn btn-primary" style="width: 100%; gap: 0.45rem;">
+            <span>Finish &amp; Submit</span>
+            <i data-lucide="check" style="width: 15px; height: 15px;"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const durationMinutes = {{ assessment.duration_minutes or 30 }};
+const totalDurationSeconds = durationMinutes * 60;
+let remainingSeconds = totalDurationSeconds;
+let timeSpentSeconds = 0;
+let timerInterval = null;
+let isAssessmentFinished = false;
+const userAnswers = {}; // question_id -> selected_option
+
+function formatTime(totalSecs) {
+  const m = Math.floor(totalSecs / 60);
+  const s = totalSecs % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function updateTimerDisplay() {
+  const timerElem = document.getElementById('assessment-timer');
+  const timerCard = document.getElementById('timer-card');
+  const timerLabel = document.getElementById('timer-label');
+  const timerIcon = document.getElementById('timer-icon');
+  if (!timerElem) return;
+
+  timerElem.textContent = formatTime(remainingSeconds);
+
+  // Visual cues based on remaining countdown
+  if (remainingSeconds <= 60) {
+    timerElem.style.color = '#ef4444';
+    if (timerIcon) timerIcon.style.color = '#ef4444';
+    if (timerLabel) {
+      timerLabel.textContent = 'Time Critical';
+      timerLabel.style.color = '#ef4444';
+    }
+    if (timerCard) {
+      timerCard.style.borderColor = 'rgba(239, 68, 68, 0.6)';
+      timerCard.style.boxShadow = '0 0 14px rgba(239, 68, 68, 0.25)';
+    }
+  } else if (remainingSeconds <= 300) {
+    timerElem.style.color = '#f59e0b';
+    if (timerIcon) timerIcon.style.color = '#f59e0b';
+    if (timerLabel) {
+      timerLabel.textContent = 'Ending Soon';
+      timerLabel.style.color = '#f59e0b';
+    }
+    if (timerCard) {
+      timerCard.style.borderColor = 'rgba(245, 158, 11, 0.45)';
+    }
+  }
+}
+
+function lockAssessmentUI() {
+  // Lock radio buttons
+  document.querySelectorAll('input[type="radio"]').forEach(radio => {
+    radio.disabled = true;
+  });
+
+  // Lock option labels so user cannot continue selecting
+  document.querySelectorAll('.option-label').forEach(label => {
+    label.style.pointerEvents = 'none';
+    label.style.opacity = '0.65';
+    label.onclick = null;
+  });
+
+  // Disable submit buttons
+  const btn = document.getElementById('btn-submit-assessment');
+  const btnSidebar = document.getElementById('btn-submit-sidebar');
+  [btn, btnSidebar].forEach(b => {
+    if (b) {
+      b.disabled = true;
+      b.style.pointerEvents = 'none';
+      b.style.opacity = '0.7';
+    }
+  });
+}
+
+function handleTimeExpired() {
+  if (isAssessmentFinished) return;
+  isAssessmentFinished = true;
+
+  // Immediately lock all answer inputs so student cannot continue after expiry
+  lockAssessmentUI();
+
+  // Show time expired banner
+  const alertElem = document.getElementById('time-expired-alert');
+  if (alertElem) alertElem.style.display = 'flex';
+
+  const timerLabel = document.getElementById('timer-label');
+  if (timerLabel) timerLabel.textContent = 'Time Expired';
+
+  // Automatically submit without asking for confirmation
+  submitAssessment(true);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  updateTimerDisplay();
+
+  timerInterval = setInterval(() => {
+    timeSpentSeconds++;
+    remainingSeconds--;
+
+    if (remainingSeconds <= 0) {
+      remainingSeconds = 0;
+      updateTimerDisplay();
+      clearInterval(timerInterval);
+      handleTimeExpired();
+    } else {
+      updateTimerDisplay();
+    }
+  }, 1000);
+});
+
+function selectOption(labelElem, questionId, questionIndex) {
+  if (isAssessmentFinished) return;
+
+  // Clear sibling labels
+  const container = labelElem.closest('.options-container');
+  container.querySelectorAll('.option-label').forEach(l => {
+    l.classList.remove('selected');
+    const dot = l.querySelector('.option-dot');
+    if (dot) {
+      dot.style.borderColor = 'var(--border-subtle)';
+      dot.style.background = 'transparent';
+      dot.style.boxShadow = 'none';
+    }
+  });
+
+  // Mark selected
+  labelElem.classList.add('selected');
+  const dot = labelElem.querySelector('.option-dot');
+  if (dot) {
+    dot.style.borderColor = 'var(--brand-primary)';
+    dot.style.background = 'var(--brand-primary)';
+    dot.style.boxShadow = '0 0 8px var(--brand-primary)';
+  }
+
+  const radio = labelElem.querySelector('input[type="radio"]');
+  if (radio) {
+    radio.checked = true;
+    userAnswers[questionId] = radio.value;
+  }
+
+  // Update question navigator button
+  const navBtn = document.getElementById(`nav-btn-${questionIndex}`);
+  if (navBtn) {
+    navBtn.style.background = 'rgba(99, 102, 241, 0.25)';
+    navBtn.style.borderColor = 'var(--brand-primary)';
+    navBtn.style.color = '#fff';
+  }
+
+  // Update answered count
+  const countElem = document.getElementById('answered-count');
+  if (countElem) {
+    countElem.textContent = Object.keys(userAnswers).length;
+  }
+}
+
+function submitAssessment(isAutoSubmit = false) {
+  if (isAssessmentFinished && !isAutoSubmit) {
+    return; // Already submitted
+  }
+
+  const total = {{ questions|length }};
+  const answered = Object.keys(userAnswers).length;
+
+  if (!isAutoSubmit) {
+    if (answered < total) {
+      if (!confirm(`You have answered ${answered} of ${total} questions. Are you sure you want to submit now?`)) {
+        return;
+      }
+    }
+    isAssessmentFinished = true;
+    clearInterval(timerInterval);
+    lockAssessmentUI();
+  }
+
+  const btn = document.getElementById('btn-submit-assessment');
+  const btnSidebar = document.getElementById('btn-submit-sidebar');
+  const statusMsg = isAutoSubmit ? 'Time Expired — Submitting...' : 'Submitting & Analyzing...';
+  [btn, btnSidebar].forEach(b => {
+    if (b) {
+      b.disabled = true;
+      b.innerHTML = `<span>${statusMsg}</span>`;
+    }
+  });
+
+  const timeToReport = isAutoSubmit ? totalDurationSeconds : timeSpentSeconds;
+
+  fetch('/api/submit-assessment', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      assessment_id: {{ assessment.assessment_id }},
+      answers: userAnswers,
+      time_taken_seconds: timeToReport
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success && data.redirect_url) {
+      window.location.href = data.redirect_url;
+    } else {
+      alert('Error submitting assessment: ' + (data.error || 'Unknown error'));
+      if (!isAutoSubmit) {
+        isAssessmentFinished = false;
+        [btn, btnSidebar].forEach(b => {
+          if (b) {
+            b.disabled = false;
+            b.style.pointerEvents = 'auto';
+            b.style.opacity = '1';
+            b.innerHTML = '<span>Submit Test</span><i data-lucide="send" style="width: 15px; height: 15px;"></i>';
+          }
+        });
+        if (window.lucide && typeof lucide.createIcons === 'function') {
+          lucide.createIcons();
+        }
+      }
+    }
+  })
+  .catch(err => {
+    console.error('Submission failed:', err);
+    alert('Failed to submit assessment. Please check your connection.');
+    if (!isAutoSubmit) {
+      isAssessmentFinished = false;
+      [btn, btnSidebar].forEach(b => {
+        if (b) {
+          b.disabled = false;
+          b.style.pointerEvents = 'auto';
+          b.style.opacity = '1';
+          b.innerHTML = '<span>Submit Test</span><i data-lucide="send" style="width: 15px; height: 15px;"></i>';
+        }
+      });
+      if (window.lucide && typeof lucide.createIcons === 'function') {
+        lucide.createIcons();
+      }
+    }
+  });
+}
+</script>
+{% endblock %}

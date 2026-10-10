@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+
+{% block title %}Lecturer Class Analytics — Cognimap AI{% endblock %}
+
+{% block content %}
+<div style="max-width: 1280px; margin: 0 auto;">
+
+  <!-- Header -->
+  <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1.25rem;">
+    <div>
+      <div style="display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+        <span class="badge badge-purple">
+          <i data-lucide="shield" style="width: 13px; height: 13px;"></i>
+          Faculty Portal
+        </span>
+        <span class="badge badge-cyan">
+          <i data-lucide="book-open" style="width: 13px; height: 13px;"></i>
+          {% if subject %}{{ subject.subject_name }} ({{ subject.code }}){% else %}Data Structures and Algorithms (CS204){% endif %}
+        </span>
+      </div>
+      <h1 class="page-title">Class Knowledge Analytics</h1>
+      <p class="page-subtitle">
+        Real-time cohort diagnostics, curriculum vulnerability reports, and individual student mastery tracking.
+      </p>
+    </div>
+    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+      <a href="{{ url_for('knowledge_map_view') }}" class="btn btn-secondary">
+        <i data-lucide="git-fork" style="width: 16px; height: 16px; color: var(--brand-cyan);"></i>
+        <span>Cohort Knowledge Map</span>
+      </a>
+      <a href="{{ url_for('lecturer_questions') }}" class="btn btn-secondary">
+        <i data-lucide="help-circle" style="width: 16px; height: 16px;"></i>
+        <span>Question Bank</span>
+      </a>
+      <a href="{{ url_for('lecturer_curriculum') }}" class="btn btn-primary">
+        <i data-lucide="layers" style="width: 16px; height: 16px;"></i>
+        <span>Curriculum &amp; DAG</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Top Stats Row -->
+  <div class="grid-4" style="margin-bottom: 2rem;">
+    <div class="stat-card">
+      <div class="stat-icon" style="background: rgba(99, 102, 241, 0.14); color: var(--brand-primary-light);">
+        <i data-lucide="users"></i>
+      </div>
+      <div>
+        <div class="stat-val">{{ total_students }}</div>
+        <div class="stat-label">Students Assessed</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background: rgba(6, 182, 212, 0.14); color: var(--brand-cyan);">
+        <i data-lucide="activity"></i>
+      </div>
+      <div>
+        <div class="stat-val" style="color: var(--brand-cyan);">{{ class_avg }}%</div>
+        <div class="stat-label">Class Best-Score Avg</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background: var(--status-strong-bg); color: var(--status-strong);">
+        <i data-lucide="award"></i>
+      </div>
+      <div>
+        <div class="stat-val" style="color: var(--status-strong);">{{ score_distribution.strong }}</div>
+        <div class="stat-label">Students &ge; 75% (Strong)</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background: var(--status-weak-bg); color: var(--status-weak);">
+        <i data-lucide="alert-octagon"></i>
+      </div>
+      <div>
+        <div class="stat-val" style="color: var(--status-weak);">{{ score_distribution.weak }}</div>
+        <div class="stat-label">Students &lt; 50% (Weak)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Row: Distribution Donut + Student Bar -->
+  <div class="grid-2" style="margin-bottom: 2rem;">
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <h3 style="font-size: 1.18rem; font-weight: 700;">Class Score Distribution</h3>
+        <span class="badge badge-unassessed">Cohort Cohere</span>
+      </div>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">Categorized on each student's highest diagnostic score</p>
+      <div style="height: 280px; position: relative;">
+        <canvas id="distDonut"></canvas>
+      </div>
+      <div style="display: flex; justify-content: center; gap: 1.5rem; margin-top: 1rem; font-size: 0.84rem; flex-wrap: wrap;">
+        <span style="display: inline-flex; align-items: center; gap: 0.4rem; color: var(--status-strong);">
+          <span class="badge-dot status-dot-strong"></span> Strong (&ge;75%) — <strong>{{ score_distribution.strong }}</strong>
+        </span>
+        <span style="display: inline-flex; align-items: center; gap: 0.4rem; color: var(--status-ni);">
+          <span class="badge-dot status-dot-ni"></span> Needs Imp — <strong>{{ score_distribution.needs_improvement }}</strong>
+        </span>
+        <span style="display: inline-flex; align-items: center; gap: 0.4rem; color: var(--status-weak);">
+          <span class="badge-dot status-dot-weak"></span> Weak (&lt;50%) — <strong>{{ score_distribution.weak }}</strong>
+        </span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <h3 style="font-size: 1.18rem; font-weight: 700;">Individual Student Scores</h3>
+        <span class="badge badge-unassessed">Ranked</span>
+      </div>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">Best diagnostic score achieved per enrolled student</p>
+      <div style="height: 280px; position: relative;">
+        <canvas id="studentBarChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gaps Row -->
+  <div class="grid-2" style="margin-bottom: 2rem;">
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <h3 style="font-size: 1.18rem; font-weight: 700;">Class Concept Gaps</h3>
+        <span class="badge badge-cyan">Aggregated DAG</span>
+      </div>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">Percentage of students requiring prerequisite remediation</p>
+      <div style="height: 300px; position: relative;">
+        <canvas id="classGapsChart"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <h3 style="font-size: 1.18rem; font-weight: 700;">Curriculum Risk Report</h3>
+        <span class="badge badge-weak">Urgent Review</span>
+      </div>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">Concepts where students exhibit highest conceptual struggle</p>
+      <div style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 320px; overflow-y: auto; padding-right: 0.35rem;">
+        {% for gap in knowledge_gaps[:8] %}
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); padding: 0.85rem 1.1rem; border-radius: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+              <strong style="color: var(--text-main); font-size: 0.92rem;">{{ gap.concept_name }}</strong>
+              <span class="badge {% if gap.need_improvement_pct >= 50 %}badge-weak{% else %}badge-ni{% endif %}">
+                {{ gap.need_improvement_pct }}% need remediation
+              </span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.45rem;">
+              <span>Class average: <strong style="color: #fff;">{{ gap.avg_score }}%</strong></span>
+              <span>🔴 {{ gap.weak_count }} &nbsp;&bull;&nbsp; 🟡 {{ gap.ni_count }} &nbsp;&bull;&nbsp; 🟢 {{ gap.strong_count }}</span>
+            </div>
+            <div class="progress-bar-container" style="height: 6px;">
+              <div class="progress-bar-fill" style="width: {{ gap.need_improvement_pct }}%; background: {% if gap.need_improvement_pct >= 50 %}var(--status-weak){% else %}var(--status-ni){% endif %};"></div>
+            </div>
+          </div>
+        {% else %}
+          <div style="text-align: center; padding: 2.5rem; color: var(--text-dim);">No cohort assessment data collected yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Student Roster Table -->
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h3 style="font-size: 1.22rem; font-weight: 700;">Individual Student Progress Roster</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Ranked by highest diagnostic score &bull; Click Inspect for full student drilldown</p>
+      </div>
+      <div style="position: relative;">
+        <input id="studentSearch" type="text" placeholder="Search student name…"
+          style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 0.55rem 1rem 0.55rem 2.4rem; color: var(--text-main); font-size: 0.88rem; outline: none; width: 260px;"
+          oninput="filterStudents(this.value)">
+        <i data-lucide="search" style="position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-dim);"></i>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table class="data-table" id="studentTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Student</th>
+            <th>Best Score</th>
+            <th>Attempts</th>
+            <th>Strong Concepts</th>
+            <th>Weak Concepts</th>
+            <th>Follow-Up Gain</th>
+            <th>Last Active</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in students %}
+            <tr class="student-row">
+              <td style="color: var(--text-dim); font-size: 0.84rem; font-family: 'JetBrains Mono', monospace;">{{ loop.index }}</td>
+              <td style="font-weight: 700; color: var(--text-main);">{{ s.name }}</td>
+              <td>
+                {% if s.percentage is not none %}
+                  <span style="font-weight: 700; font-family: 'JetBrains Mono', monospace; color: {% if s.percentage >= 75 %}var(--status-strong){% elif s.percentage >= 50 %}var(--status-ni){% else %}var(--status-weak){% endif %};">
+                    {{ s.percentage }}%
+                  </span>
+                {% else %}
+                  <span style="color: var(--text-dim);">Not attempted</span>
+                {% endif %}
+              </td>
+              <td style="font-size: 0.88rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">{{ s.attempt_count }}</td>
+              <td>
+                {% if s.total_concepts > 0 %}
+                  <span style="color: var(--status-strong); font-weight: 700;">{{ s.strong_concepts }}</span>
+                  <span style="color: var(--text-dim); font-size: 0.8rem;"> / {{ s.total_concepts }}</span>
+                {% else %}
+                  <span style="color: var(--text-dim);">—</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if s.weak_concepts > 0 %}
+                  <span style="color: var(--status-weak); font-weight: 700;">{{ s.weak_concepts }}</span>
+                {% elif s.total_concepts > 0 %}
+                  <span style="color: var(--status-strong); font-size: 0.84rem; font-weight: 600;">None</span>
+                {% else %}
+                  <span style="color: var(--text-dim);">—</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if s.overall_improvement is not none %}
+                  <span class="badge {% if s.overall_improvement > 0 %}badge-strong{% elif s.overall_improvement == 0 %}badge-unassessed{% else %}badge-weak{% endif %}">
+                    {{ "+" if s.overall_improvement > 0 else "" }}{{ s.overall_improvement }}% pts
+                  </span>
+                {% else %}
+                  <span style="color: var(--text-dim); font-size: 0.84rem;">Not taken</span>
+                {% endif %}
+              </td>
+              <td style="font-size: 0.82rem; color: var(--text-muted);">{{ s.completed_at or '—' }}</td>
+              <td>
+                <a href="{{ url_for('lecturer_student_drilldown', student_id=s.user_id) }}" class="btn btn-secondary btn-sm" style="padding: 0.35rem 0.8rem; font-size: 0.82rem;">
+                  <span>Inspect</span>
+                  <i data-lucide="arrow-right" style="width: 13px; height: 13px;"></i>
+                </a>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="9" style="text-align: center; padding: 2.5rem; color: var(--text-dim);">No students registered or assessed yet.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Filter Student Table
+function filterStudents(query) {
+  const q = query.toLowerCase().trim();
+  document.querySelectorAll('#studentTable tbody tr.student-row').forEach(row => {
+    const name = row.children[1].textContent.toLowerCase();
+    row.style.display = name.includes(q) ? '' : 'none';
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Chart Colors
+  const strongColor = '#10b981';
+  const niColor = '#f59e0b';
+  const weakColor = '#f43f5e';
+  const gridColor = 'rgba(255, 255, 255, 0.06)';
+  const labelColor = '#94a3b8';
+
+  // 1. Donut Chart: Score Distribution
+  const donutCtx = document.getElementById('distDonut');
+  if (donutCtx) {
+    const strongCount = {{ score_distribution.strong }};
+    const niCount = {{ score_distribution.needs_improvement }};
+    const weakCount = {{ score_distribution.weak }};
+    const hasData = (strongCount + niCount + weakCount) > 0;
+
+    new Chart(donutCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Strong (≥75%)', 'Needs Improvement (50-74%)', 'Weak (<50%)'],
+        datasets: [{
+          data: hasData ? [strongCount, niCount, weakCount] : [1],
+          backgroundColor: hasData ? [strongColor, niColor, weakColor] : ['rgba(255,255,255,0.08)'],
+          borderColor: 'transparent',
+          borderWidth: 0,
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '72%',
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: hasData }
+        }
+      }
+    });
+  }
+
+  // 2. Bar Chart: Individual Student Scores
+  const barCtx = document.getElementById('studentBarChart');
+  if (barCtx) {
+    const studentNames = {{ students | map(attribute='name') | list | tojson }};
+    const studentScores = {{ students | map(attribute='percentage') | list | tojson }};
+    const validScores = studentScores.map(s => s !== null ? s : 0);
+
+    const barColors = validScores.map(s => {
+      if (s >= 75) return strongColor;
+      if (s >= 50) return niColor;
+      return weakColor;
+    });
+
+    new Chart(barCtx, {
+      type: 'bar',
+      data: {
+        labels: studentNames.slice(0, 10),
+        datasets: [{
+          label: 'Best Score (%)',
+          data: validScores.slice(0, 10),
+          backgroundColor: barColors.slice(0, 10),
+          borderRadius: 6,
+          borderSkipped: false
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            min: 0,
+            max: 100,
+            ticks: { color: labelColor, stepSize: 25 },
+            grid: { color: gridColor }
+          },
+          x: {
+            ticks: {
+              color: '#cbd5e1',
+              font: { weight: '600' },
+              maxRotation: 30,
+              minRotation: 0
+            },
+            grid: { display: false }
+          }
+        },
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+  }
+
+  // 3. Horizontal Bar Chart: Class Concept Gaps
+  const gapsCtx = document.getElementById('classGapsChart');
+  if (gapsCtx) {
+    const gapData = {{ knowledge_gaps | tojson }};
+    const gapLabels = gapData.slice(0, 7).map(g => g.concept_name);
+    const gapPcts = gapData.slice(0, 7).map(g => g.need_improvement_pct);
+
+    new Chart(gapsCtx, {
+      type: 'bar',
+      indexAxis: 'y',
+      data: {
+        labels: gapLabels,
+        datasets: [{
+          label: '% Students Needing Remediation',
+          data: gapPcts,
+          backgroundColor: gapPcts.map(p => p >= 50 ? 'rgba(244, 63, 94, 0.75)' : 'rgba(245, 158, 11, 0.75)'),
+          borderColor: gapPcts.map(p => p >= 50 ? weakColor : niColor),
+          borderWidth: 1.5,
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            min: 0,
+            max: 100,
+            ticks: { color: labelColor, callback: v => v + '%' },
+            grid: { color: gridColor }
+          },
+          y: {
+            ticks: { color: '#cbd5e1', font: { weight: '600', size: 11 } },
+            grid: { display: false }
+          }
+        },
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+  }
+});
+</script>
+{% endblock %}
